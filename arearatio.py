@@ -131,7 +131,8 @@ class PointTool(QgsMapTool):
                         self.tr("{} layer not found".format(self.POLY_LAYER)))
                 return
             self.poly_layer = poly_layers[0]
-            self.poly_path = self.poly_layer.dataProvider().dataSourceUri()
+            # remove | layer: 0 tag from the end
+            self.poly_path = self.poly_layer.dataProvider().dataSourceUri().split('|')[0]
             # build index for POLYGON layer
             self.index = QgsSpatialIndex()
             for feat in self.poly_layer.getFeatures():
@@ -150,6 +151,8 @@ class PointTool(QgsMapTool):
                 break
         else:
             # No poly found
+            QMessageBox(None, self.tr("Area ratio"),
+                    self.tr("Feature not found on layer {} ".format(self.POLY_LAYER)))
             return
         # remove previous selection
         self.poly_layer.removeSelection()
@@ -166,10 +169,11 @@ class PointTool(QgsMapTool):
                         self.tr("{} layer not found".format(name)))
                 continue
             layer = layers[0]
-            layer_path = layer.dataProvider().dataSourceUri()
+            # remove | layer: 0 tag from the end
+            layer_path = layer.dataProvider().dataSourceUri().split('|')[0]
             processing.run("native:selectbylocation",
                 {'INPUT': layer_path,
-                 'INTERSECT': QgsProcessingFeatureSourceDefinition(self.poly_path, selectedFeaturesOnly=True, featureLimit=-1),
+                 'INTERSECT': QgsProcessingFeatureSourceDefinition(self.poly_path, True),
                  'METHOD': 0, 'PREDICATE': [0]})
             features = layer.selectedFeatures()
             n = 0

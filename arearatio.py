@@ -84,9 +84,12 @@ class AreaRatio:
         self.action = QAction(QIcon(icon_path),
                                         self.tr(u'Area Ratio'),
                                         self.iface.mainWindow())
+        self.action.setCheckable(True)
         self.action.triggered.connect(self.run)
         self.iface.addToolBarIcon(self.action)
         self.iface.addPluginToMenu(u'Area Ratio', self.action)
+        self.tool = PointTool(self.iface.mapCanvas(), self.action)
+        self.prevTool = None
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -95,30 +98,41 @@ class AreaRatio:
 
     def run(self):
         """Run method that performs all the real work"""
-        tool = PointTool(self.iface.mapCanvas())
-        self.iface.mapCanvas().setMapTool(tool)
+        #if self.iface.mapCanvas().mapTool() != self.tool:
+        #    self.prevTool = self.iface.mapCanvas().mapTool()
+        self.iface.mapCanvas().setMapTool(self.tool)
+        #else:
+        #    self.iface.mapCanvas().setMapTool(self.prevTool)
 
 class PointTool(QgsMapTool):
+    """ Map tool to query area in a polygon from other layers
 
+        :param canvas: map canvas
+        :param action: action to tool
+    """
     POLY_LAYER = "TELEK"    # large polygons
     # smaller polygons
     IN_POLY_LAYERS = ("Lakóépület", "Középület", "Gazdasági épület",
                       "Melléképület", "Üdülőépület", "Toronyépület",
                       "Üzemi épület", "Vegyes rendeltetésű épület")
 
-    def __init__(self, canvas):
+    def __init__(self, canvas, action):
         QgsMapTool.__init__(self, canvas)
         self.canvas = canvas
+        self.action = action
         self.index = None
         self.poly_layer = None
         self.poly_path = None
 
     def activate(self):
+        """ activate is called when the button is clicked """
         super().activate()
 
     def deactivate(self):
+        """ deactivate called when another tool button is clicked """
         super().deactivate()
         self.deactivated.emit()
+        self.action.setChecked(False)   # set tool state to unchecked
 
     def canvasPressEvent(self, event):
         x = event.pos().x()
@@ -127,7 +141,7 @@ class PointTool(QgsMapTool):
         if self.poly_layer is None:
             poly_layers = QgsProject.instance().mapLayersByName(self.POLY_LAYER)
             if len(poly_layers) == 0:
-                QMessageBox(None, self.tr("Area ratio"),
+                QMessageBox.warning(None, self.tr("Area ratio"),
                         self.tr("{} layer not found".format(self.POLY_LAYER)))
                 return
             self.poly_layer = poly_layers[0]
@@ -151,7 +165,7 @@ class PointTool(QgsMapTool):
                 break
         else:
             # No poly found
-            QMessageBox(None, self.tr("Area ratio"),
+            QMessageBox.warning(None, self.tr("Area ratio"),
                     self.tr("Feature not found on layer {} ".format(self.POLY_LAYER)))
             return
         # remove previous selection
@@ -165,7 +179,7 @@ class PointTool(QgsMapTool):
         for name in self.IN_POLY_LAYERS:
             layers = QgsProject.instance().mapLayersByName(name)
             if len(layers) == 0:
-                QMessageBox(None, self.tr("Area ratio"),
+                QMessageBox.warning(None, self.tr("Area ratio"),
                         self.tr("{} layer not found".format(name)))
                 continue
             layer = layers[0]

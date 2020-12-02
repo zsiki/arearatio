@@ -2,4 +2,7 @@
     <qresource prefix="/plugins/arearatio" >
         <file>icon.png</file>
     </qresource>
+    <qresource prefix="/plugins/arearatio" >
+        <file>icon1.png</file>
+    </qresource>
 </RCC>

@@ -30,6 +30,7 @@ from qgis.gui import QgsMapTool
 from qgis.core import QgsPoint, QgsProject, QgsSpatialIndex, \
         QgsFeatureRequest, QgsGeometry, QgsProcessingFeatureSourceDefinition
 from qgis import processing
+import configparser
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -63,6 +64,10 @@ class AreaRatio:
             self.translator.load(locale_path)
             QCoreApplication.installTranslator(self.translator)
         self.dlg = AreaRatioDialog(self)
+        parcel, buildings = self.config(os.path.join(
+            self.plugin_dir, 'arearatio.cfg'))
+        self.parcel = parcel
+        self.buildings = buildings
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -79,6 +84,31 @@ class AreaRatio:
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('AreaRatio', message)
 
+    def config(self, path):
+        """ load default configuration (layers) """
+        parcel = 'TELEK'
+        buildings = ["Lakóépület", "Középület", "Gazdasági épület",
+                    "Melléképület", "Üdülőépület", "Toronyépület",
+                    "Üzemi épület", "Vegyes rendeltetésű épület"]
+        parser = configparser.ConfigParser()
+        if not os.path.exists(path):
+            QMessageBox.warning(None, self.tr("Missing file"),
+                self.tr("Config file not found: {}").format(path))
+            return parcel, buildings
+        try:
+            parser.read(path)
+        except:
+            QMessageBox.warning(None, self.tr("Error in file"),
+                self.tr("Config file is not valid: {}").format(path))
+            return parcel, buildings
+        for section in parser.sections():
+            if section == "layers":
+                parcel = parser[section].get('parcel', parcel)
+                w = parser[section].get('buildings')
+                if len(w) > 0:
+                    buildings = [name.strip() for name in w.split(',')]
+        return parcel, buildings
+
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
@@ -90,7 +120,8 @@ class AreaRatio:
         self.action.triggered.connect(self.run)
         self.iface.addToolBarIcon(self.action)
         self.iface.addPluginToMenu(u'Area Ratio', self.action)
-        self.tool = PointTool(self.iface.mapCanvas(), self.action)
+        self.tool = PointTool(self.iface.mapCanvas(), self.action,
+                              self.parcel, self.buildings)
         # dialog
         icon_path = ':/plugins/arearatio/icon1.png'
         self.action1 = QAction(QIcon(icon_path),
@@ -103,7 +134,9 @@ class AreaRatio:
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         self.iface.removePluginMenu(u'Area Ratio', self.action)
+        self.iface.removePluginMenu(u'Area Ratio', self.action1)
         self.iface.removeToolBarIcon(self.action)
+        self.iface.removeToolBarIcon(self.action1)
 
     def run(self):
         """ Activate map tool """
@@ -120,8 +153,6 @@ class AreaRatio:
             #self.tool.in_poly_layers = [name.strip() for name
             #        in self.dlg.buildingsComboBox.currentText().split(',')]
             self.tool.in_poly_layers = self.dlg.buildingsComboBox.checkedItems()
-            print(self.tool.poly_layer_name)
-            print(self.tool.in_poly_layers)
 
 class PointTool(QgsMapTool):
     """ Map tool to query area in a polygon from other layers
@@ -130,18 +161,16 @@ class PointTool(QgsMapTool):
         :param action: action to tool
     """
 
-    def __init__(self, canvas, action):
+    def __init__(self, canvas, action, parcel, buildings):
         QgsMapTool.__init__(self, canvas)
         self.canvas = canvas
         self.action = action
         self.index = None
         self.poly_layer = None
         self.poly_path = None
-        self.poly_layer_name = "TELEK"    # large polygons
+        self.poly_layer_name = parcel    # large polygons
         # smaller polygons
-        self.in_poly_layers = ("Lakóépület", "Középület", "Gazdasági épület",
-                               "Melléképület", "Üdülőépület", "Toronyépület",
-                               "Üzemi épület", "Vegyes rendeltetésű épület")
+        self.in_poly_layers = buildings
 
     def activate(self):
         """ activate is called when the button is clicked """

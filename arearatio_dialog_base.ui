@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>helloworld</string>
+   <string>Area Ratio</string>
   </property>
   <widget class="QDialogButtonBox" name="button_box">
    <property name="geometry">
@@ -61,21 +61,6 @@
      <height>27</height>
     </rect>
    </property>
-   <item>
-    <property name="text">
-     <string>New Item1</string>
-    </property>
-   </item>
-   <item>
-    <property name="text">
-     <string>New Item2</string>
-    </property>
-   </item>
-   <item>
-    <property name="text">
-     <string>New Item3</string>
-    </property>
-   </item>
   </widget>
   <widget class="QLabel" name="label_2">
    <property name="geometry">

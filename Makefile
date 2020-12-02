@@ -38,13 +38,15 @@ LRELEASE = lrelease
 # translation
 SOURCES = \
 	__init__.py \
-	arearatio.py
+	arearatio.py arearatio_dialog.py 
 
 PLUGINNAME = arearatio
 
 PY_FILES = \
 	__init__.py \
-	arearatio.py
+	arearatio.py arearatio_dialog.py
+
+UI_FILES = arearatio_dialog_base.ui
 
 EXTRAS = metadata.txt icon.png
 

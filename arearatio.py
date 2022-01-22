@@ -37,6 +37,8 @@ from .resources import *
 from .arearatio_dialog import AreaRatioDialog
 import os.path
 
+DEFAULT_CONFIG = "L:/xxii/arearatio.cfg"
+
 class AreaRatio:
     """QGIS Plugin to calculate area ratio among polygons"""
 
@@ -53,19 +55,23 @@ class AreaRatio:
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
         # initialize locale
-        locale = QSettings().value('locale/userLocale')[0:2]
-        locale_path = os.path.join(
-            self.plugin_dir,
-            'i18n',
-            'AreaRatio_{}.qm'.format(locale))
-
+        locale = QSettings().value('locale/userLocale')
+        if not locale:
+            locale = QSettings().value('locale/globalLocale')
+            if not locale:
+                locale = "en"
+        locale = locale[0:2]
+        locale_path = os.path.join(self.plugin_dir, 'i18n', '{}.qm'.format(locale))
         if os.path.exists(locale_path):
             self.translator = QTranslator()
             self.translator.load(locale_path)
             QCoreApplication.installTranslator(self.translator)
         self.dlg = AreaRatioDialog(self)
-        parcel, buildings = self.config(os.path.join(
-            self.plugin_dir, 'arearatio.cfg'))
+        if os.path.exists(DEFAULT_CONFIG):
+            parcel, buildings = self.config(DEFAULT_CONFIG)
+        else:
+            parcel, buildings = self.config(os.path.join(
+                self.plugin_dir, 'default.cfg'))
         self.parcel = parcel
         self.buildings = buildings
 
@@ -120,8 +126,7 @@ class AreaRatio:
         self.action.triggered.connect(self.run)
         self.iface.addToolBarIcon(self.action)
         self.iface.addPluginToMenu(u'Area Ratio', self.action)
-        self.tool = PointTool(self.iface.mapCanvas(), self.action,
-                              self.parcel, self.buildings)
+        self.tool = PointTool(self.iface.mapCanvas(), self.action, self)
         # dialog
         icon_path = ':/plugins/arearatio/icon1.png'
         self.action1 = QAction(QIcon(icon_path),
@@ -148,11 +153,13 @@ class AreaRatio:
         result = self.dlg.exec_()
         if result:
             index = self.dlg.parcelLayerComboBox.currentIndex()
-            self.tool.poly_layer_name = self.dlg.parcelLayerComboBox.itemText(index)
+            self.parcel = self.dlg.parcelLayerComboBox.itemText(index)
             #self.tool.poly_layer_name = self.dlg.parcelLayerComboBox.currentText()
             #self.tool.in_poly_layers = [name.strip() for name
             #        in self.dlg.buildingsComboBox.currentText().split(',')]
-            self.tool.in_poly_layers = self.dlg.buildingsComboBox.checkedItems()
+            self.buildings = self.dlg.buildingsComboBox.checkedItems()
+            # force index creation
+            self.tool.index = None
 
 class PointTool(QgsMapTool):
     """ Map tool to query area in a polygon from other layers
@@ -161,16 +168,17 @@ class PointTool(QgsMapTool):
         :param action: action to tool
     """
 
-    def __init__(self, canvas, action, parcel, buildings):
+    def __init__(self, canvas, action, main):
         QgsMapTool.__init__(self, canvas)
         self.canvas = canvas
         self.action = action
         self.index = None
-        self.poly_layer = None
-        self.poly_path = None
-        self.poly_layer_name = parcel    # large polygons
+        #self.poly_layer = None
+        #self.poly_path = None
+        #self.poly_layer_name = parcel    # large polygons
         # smaller polygons
-        self.in_poly_layers = buildings
+        #self.in_poly_layers = buildings
+        self.main = main
 
     def activate(self):
         """ activate is called when the button is clicked """
@@ -187,26 +195,27 @@ class PointTool(QgsMapTool):
         x = event.pos().x()
         y = event.pos().y()
         pos = self.toMapCoordinates(QPoint(x, y))
-        if self.poly_layer is None:
-            # searc for parcel layer
-            poly_layers = QgsProject.instance().mapLayersByName(self.poly_layer_name)
-            if len(poly_layers) == 0:
-                QMessageBox.warning(None, self.tr("Area ratio"),
-                        self.tr("{} layer not found".format(self.poly_layer_name)))
-                return
-            self.poly_layer = poly_layers[0]
-            # remove | layer: 0 tag from the end TODO not always good!
-            self.poly_path = self.poly_layer.dataProvider().dataSourceUri().split('|')[0]
-            # build index for polygon layer
+        # search for parcel layer
+        poly_layers = QgsProject.instance().mapLayersByName(self.main.parcel)
+        if len(poly_layers) == 0:
+            QMessageBox.warning(None, self.tr("Area ratio"),
+                    self.tr("{} layer not found".format(self.main.parcel)))
+            return
+        poly_layer = poly_layers[0]
+        # remove | layer: 0 tag from the end TODO not always good!
+        poly_path = poly_layer.dataProvider().dataSourceUri().split('|')[0]
+        # build index for polygon layer
+        if self.index is None:
             self.index = QgsSpatialIndex()
-            for feat in self.poly_layer.getFeatures():
+            for feat in poly_layer.getFeatures():
                 self.index.insertFeature(feat)
 
+        in_poly_layers = self.main.buildings
         # find polygons which MBR cover point
         fids = self.index.nearestNeighbor(pos)
         request = QgsFeatureRequest()
         request.setFilterFids(fids)
-        features = self.poly_layer.getFeatures(request)
+        features = poly_layer.getFeatures(request)
         p_geom = QgsGeometry.fromPointXY(pos)
         f = None
         for feat in features:
@@ -216,17 +225,17 @@ class PointTool(QgsMapTool):
         else:
             # No poly found
             QMessageBox.warning(None, self.tr("Area ratio"),
-                    self.tr("Feature not found on layer {} ".format(self.poly_layer_name)))
+                    self.tr("Feature not found on layer {} ".format(self.main.parcel)))
             return
         # remove previous selection
-        self.poly_layer.removeSelection()
+        poly_layer.removeSelection()
         # select polygon clicked
-        self.poly_layer.select(f.id())
+        poly_layer.select(f.id())
         area1 = f.geometry().area() # parcel area
         area2 = 0   # sum area for in_poly_layers
-        msg = self.poly_layer_name + ": {:.1f}\n".format(area1)
+        msg = self.main.parcel + ": {:.1f}\n".format(area1)
         # go through building layers
-        for name in self.in_poly_layers:
+        for name in in_poly_layers:
             layers = QgsProject.instance().mapLayersByName(name)
             if len(layers) == 0:
                 QMessageBox.warning(None, self.tr("Area ratio"),
@@ -238,7 +247,7 @@ class PointTool(QgsMapTool):
             # select intersecting building
             processing.run("native:selectbylocation",
                 {'INPUT': layer_path,
-                 'INTERSECT': QgsProcessingFeatureSourceDefinition(self.poly_path, True),
+                 'INTERSECT': QgsProcessingFeatureSourceDefinition(poly_path, True),
                  'METHOD': 0, 'PREDICATE': [0]})
             features = layer.selectedFeatures()
             n = 0

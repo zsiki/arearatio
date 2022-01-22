@@ -6,11 +6,11 @@
 name=Area Ratio
 qgisMinimumVersion=3.0
 description=Area ration of polygons within an other polygon
-version=0.1
+version=0.2
 author=Zoltan Siki
 email=siki1958@gmail.com
 
-about=Use this toll to mark a polgon in a predefined layer and calculate the area ration of polygons from other predefined layers.
+about=Use this tool to mark a polgon in a predefined layer and calculate the area ration of polygons from other predefined layers.
 
 tracker=https://github.com/zsiki/arearatio
 repository=https://github.com/zsiki/arearatio

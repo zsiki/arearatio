@@ -23,10 +23,11 @@
 """
 
 import os
-
+import configparser
 from PyQt5 import uic
 from PyQt5 import QtWidgets
 from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.core import QgsMapLayerProxyModel
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -41,19 +42,58 @@ class AreaRatioDialog(QtWidgets.QDialog, FORM_CLASS):
         super(AreaRatioDialog, self).__init__(parent)
         self.main = main
         self.setupUi(self)
+        self.loadButton.clicked.connect(self.load_config)
+        self.saveButton.clicked.connect(self.save_config)
 
     def showEvent(self, event):
         """ initialize widgets """
         self.parcelLayerComboBox.setFilters(QgsMapLayerProxyModel.PolygonLayer)
-        index = self.parcelLayerComboBox.findText(self.main.tool.poly_layer_name)
+        index = self.parcelLayerComboBox.findText(self.main.parcel)
         if index >= 0:
             self.parcelLayerComboBox.setCurrentIndex(index)
+        # remove all building layers
+        self.buildingsComboBox.clear()
+        # fill combo
         for i in range(0, self.parcelLayerComboBox.count()):
             name = self.parcelLayerComboBox.itemText(i)
             self.buildingsComboBox.addItem(name)
-        # select building layers
-        for in_layer in self.main.tool.in_poly_layers:
+        # select building layers from config
+        for in_layer in self.main.buildings:
             index = self.buildingsComboBox.findText(in_layer)
             if index >= 0:
                 self.buildingsComboBox.setItemCheckState(index, Qt.CheckState.Checked)
 
+    def load_config(self):
+        """ select and load new configuration """
+        qfd = QtWidgets.QFileDialog()
+        filt = self.main.tr("Config files(*.cfg)")
+        title = self.main.tr("Select config file to load")
+        f, _ = QtWidgets.QFileDialog.getOpenFileName(qfd, title, ".", filt)
+        print(f)
+        self.main.parcel, self.main.buildings = self.main.config(f)
+        print(self.main.parcel)
+        print(self.main.buildings)
+        self.showEvent(None)
+
+    def save_config(self):
+        """ save config to file """
+        qfd = QtWidgets.QFileDialog()
+        filt = self.main.tr("Config files(*.cfg)")
+        title = self.main.tr("Select config file to save")
+        f, _ = QtWidgets.QFileDialog.getSaveFileName(qfd, title, ".", filt)
+        print('file: ', f)
+        print('buildings: ', ','.join(self.buildingsComboBox.checkedItems()))
+        if len(f):
+            if not f.endswith('.cfg'):
+                f = f + '.cfg'
+            index = self.parcelLayerComboBox.currentIndex()
+            config = configparser.ConfigParser()
+            config['layers'] = {}
+            config['layers']['parcel'] = self.parcelLayerComboBox.itemText(index)
+            config['layers']['buildings'] = ','.join(self.buildingsComboBox.checkedItems())
+            try:
+                with open(f, 'w') as configfile:
+                    config.write(configfile)
+            except:
+                QMessageBox.warning(None, self.tr("Area ratio"),
+                        self.tr("Permission denied: ".format(f)))

@@ -22,6 +22,8 @@ The config file can contain one block (*layers*) and two variables
 
 The user can set the container layer and the cointained layers in the
 configuration dialog. In this dialig you can select from the loaded
-polygon layers of the actual project.
+polygon layers of the actual project. Configuration files can be saved 
+and loaded from the configuration dialog.
+
 If there are more layers in the actual QGIS project with the given names, the 
 first found will be used.

@@ -245,10 +245,15 @@ class PointTool(QgsMapTool):
             # remove | layer: 0 tag from the end
             layer_path = layer.dataProvider().dataSourceUri().split('|')[0]
             # select intersecting building
-            processing.run("native:selectbylocation",
-                {'INPUT': layer_path,
-                 'INTERSECT': QgsProcessingFeatureSourceDefinition(poly_path, True),
-                 'METHOD': 0, 'PREDICATE': [0]})
+            try:
+                processing.run("native:selectbylocation",
+                    {'INPUT': layer_path,
+                     'INTERSECT': QgsProcessingFeatureSourceDefinition(poly_path, True),
+                     'METHOD': 0, 'PREDICATE': [0]})
+            except:
+                QMessageBox.warning(None, self.tr("Area ratio"),
+                        self.tr("Please enable Processing plugin and try again"))
+                return
             features = layer.selectedFeatures()
             n = 0
             area3 = 0   # sum area for actual layer

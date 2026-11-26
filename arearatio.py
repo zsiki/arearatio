@@ -23,21 +23,21 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QPoint
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from qgis.gui import QgsMapTool
-from qgis.core import QgsPoint, QgsProject, QgsSpatialIndex, \
-        QgsFeatureRequest, QgsGeometry, QgsProcessingFeatureSourceDefinition
-from qgis import processing
 import configparser
+import os.path
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QPoint
+from qgis.PyQt.QtGui import QIcon, QAction
+from qgis.PyQt.QtWidgets import QMessageBox
+from qgis.gui import QgsMapTool
+from qgis.core import QgsProject, QgsSpatialIndex, QgsFeatureRequest, QgsGeometry, QgsProcessingFeatureSourceDefinition
+from qgis import processing
 
 # Initialize Qt resources from file resources.py
 from .resources import *
 from .arearatio_dialog import AreaRatioDialog
-import os.path
 
 DEFAULT_CONFIG = "L:/xxii/arearatio.cfg"
+
 
 class AreaRatio:
     """QGIS Plugin to calculate area ratio among polygons"""
@@ -61,7 +61,7 @@ class AreaRatio:
             if not locale:
                 locale = "en"
         locale = locale[0:2]
-        locale_path = os.path.join(self.plugin_dir, 'i18n', '{}.qm'.format(locale))
+        locale_path = os.path.join(self.plugin_dir, 'i18n', f'{locale}.qm')
         if os.path.exists(locale_path):
             self.translator = QTranslator()
             self.translator.load(locale_path)
@@ -94,18 +94,18 @@ class AreaRatio:
         """ load default configuration (layers) """
         parcel = 'TELEK'
         buildings = ["Lakóépület", "Középület", "Gazdasági épület",
-                    "Melléképület", "Üdülőépület", "Toronyépület",
-                    "Üzemi épület", "Vegyes rendeltetésű épület"]
+                     "Melléképület", "Üdülőépület", "Toronyépület",
+                     "Üzemi épület", "Vegyes rendeltetésű épület"]
         parser = configparser.ConfigParser()
         if not os.path.exists(path):
             QMessageBox.warning(None, self.tr("Missing file"),
-                self.tr("Config file not found: {}").format(path))
+                                self.tr("Config file not found: {}").format(path))
             return parcel, buildings
         try:
             parser.read(path)
         except:
             QMessageBox.warning(None, self.tr("Error in file"),
-                self.tr("Config file is not valid: {}").format(path))
+                                self.tr("Config file is not valid: {}").format(path))
             return parcel, buildings
         for section in parser.sections():
             if section == "layers":
@@ -120,8 +120,8 @@ class AreaRatio:
 
         icon_path = ':/plugins/arearatio/icon.png'
         self.action = QAction(QIcon(icon_path),
-                                    self.tr(u'Area Ratio'),
-                                    self.iface.mainWindow())
+                              self.tr('Area Ratio'),
+                              self.iface.mainWindow())
         self.action.setCheckable(True)
         self.action.triggered.connect(self.run)
         self.iface.addToolBarIcon(self.action)
@@ -130,16 +130,16 @@ class AreaRatio:
         # dialog
         icon_path = ':/plugins/arearatio/icon1.png'
         self.action1 = QAction(QIcon(icon_path),
-                                     self.tr(u'Area Ratio Dialog'),
-                                     self.iface.mainWindow())
+                               self.tr('Area Ratio Dialog'),
+                               self.iface.mainWindow())
         self.action1.triggered.connect(self.dia)
         self.iface.addToolBarIcon(self.action1)
-        self.iface.addPluginToMenu(u'Area Ratio', self.action1)
+        self.iface.addPluginToMenu('Area Ratio', self.action1)
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
-        self.iface.removePluginMenu(u'Area Ratio', self.action)
-        self.iface.removePluginMenu(u'Area Ratio', self.action1)
+        self.iface.removePluginMenu('Area Ratio', self.action)
+        self.iface.removePluginMenu('Area Ratio', self.action1)
         self.iface.removeToolBarIcon(self.action)
         self.iface.removeToolBarIcon(self.action1)
 
@@ -150,16 +150,14 @@ class AreaRatio:
     def dia(self):
         """Show layer selection dialog"""
         self.dlg.show()
-        result = self.dlg.exec_()
+        result = self.dlg.exec()
         if result:
             index = self.dlg.parcelLayerComboBox.currentIndex()
             self.parcel = self.dlg.parcelLayerComboBox.itemText(index)
-            #self.tool.poly_layer_name = self.dlg.parcelLayerComboBox.currentText()
-            #self.tool.in_poly_layers = [name.strip() for name
-            #        in self.dlg.buildingsComboBox.currentText().split(',')]
             self.buildings = self.dlg.buildingsComboBox.checkedItems()
             # force index creation
             self.tool.index = None
+
 
 class PointTool(QgsMapTool):
     """ Map tool to query area in a polygon from other layers
@@ -173,11 +171,6 @@ class PointTool(QgsMapTool):
         self.canvas = canvas
         self.action = action
         self.index = None
-        #self.poly_layer = None
-        #self.poly_path = None
-        #self.poly_layer_name = parcel    # large polygons
-        # smaller polygons
-        #self.in_poly_layers = buildings
         self.main = main
 
     def activate(self):
@@ -199,7 +192,7 @@ class PointTool(QgsMapTool):
         poly_layers = QgsProject.instance().mapLayersByName(self.main.parcel)
         if len(poly_layers) == 0:
             QMessageBox.warning(None, self.tr("Area ratio"),
-                    self.tr("{} layer not found".format(self.main.parcel)))
+                    self.tr(f"{self.main.parcel} layer not found"))
             return
         poly_layer = poly_layers[0]
         # remove | layer: 0 tag from the end TODO not always good!
@@ -225,7 +218,7 @@ class PointTool(QgsMapTool):
         else:
             # No poly found
             QMessageBox.warning(None, self.tr("Area ratio"),
-                    self.tr("Feature not found on layer {} ".format(self.main.parcel)))
+                    self.tr(f"Feature not found on layer {self.main.parcel} "))
             return
         # remove previous selection
         poly_layer.removeSelection()
@@ -233,13 +226,13 @@ class PointTool(QgsMapTool):
         poly_layer.select(f.id())
         area1 = f.geometry().area() # parcel area
         area2 = 0   # sum area for in_poly_layers
-        msg = self.main.parcel + ": {:.1f}\n".format(area1)
+        msg = self.main.parcel + f": {area1:.1f}\n"
         # go through building layers
         for name in in_poly_layers:
             layers = QgsProject.instance().mapLayersByName(name)
             if len(layers) == 0:
                 QMessageBox.warning(None, self.tr("Area ratio"),
-                        self.tr("{} layer not found".format(name)))
+                        self.tr(f"{name} layer not found"))
                 continue
             layer = layers[0]
             # remove | layer: 0 tag from the end
@@ -266,7 +259,7 @@ class PointTool(QgsMapTool):
                     area3 += warea  # total area in this layer
                     area2 += warea  # total area in all layers
             if n > 0:
-                msg = msg + "\n{:d} {}: {:.1f}".format(n, name, area3)
+                msg = msg + f"\n{n} {name}: {area3:.1f}"
             layer.removeSelection()
-        msg = msg + "\n\n{:.1f} %".format(area2 / area1 * 100.0)
+        msg = msg + f"\n\n{area2 / area1 * 100.0:.1f}"
         QMessageBox.information(None, self.tr("Area ratio"), msg)

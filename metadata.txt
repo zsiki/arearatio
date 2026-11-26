@@ -5,8 +5,9 @@
 [general]
 name=Area Ratio
 qgisMinimumVersion=3.0
+qgisMaximumVersion=4.99
 description=Area ration of polygons within an other polygon
-version=0.2
+version=0.3
 author=Zoltan Siki
 email=siki1958@gmail.com
 
@@ -20,7 +21,7 @@ repository=https://github.com/zsiki/arearatio
 
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-# changelog=
+changelog=upgrade to QGIS 4
 
 # Tags are comma separated with spaces allowed
 tags=python

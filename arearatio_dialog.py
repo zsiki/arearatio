@@ -24,8 +24,8 @@
 
 import os
 import configparser
-from PyQt5 import uic
-from PyQt5 import QtWidgets
+from qgis.PyQt import uic
+from qgis.PyQt import QtWidgets
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.core import QgsMapLayerProxyModel
@@ -48,7 +48,7 @@ class AreaRatioDialog(QtWidgets.QDialog, FORM_CLASS):
     def showEvent(self, event):
         """ initialize widgets """
         self.parcelLayerComboBox.setFilters(QgsMapLayerProxyModel.PolygonLayer)
-        self.parcelLayerComboBox.view().setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.parcelLayerComboBox.view().setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         index = self.parcelLayerComboBox.findText(self.main.parcel)
         if index >= 0:
             self.parcelLayerComboBox.setCurrentIndex(index)
@@ -58,7 +58,7 @@ class AreaRatioDialog(QtWidgets.QDialog, FORM_CLASS):
         for i in range(0, self.parcelLayerComboBox.count()):
             name = self.parcelLayerComboBox.itemText(i)
             self.buildingsComboBox.addItem(name)
-        self.buildingsComboBox.view().setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.buildingsComboBox.view().setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         # select building layers from config
         for in_layer in self.main.buildings:
             index = self.buildingsComboBox.findText(in_layer)

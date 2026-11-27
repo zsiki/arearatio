@@ -192,7 +192,7 @@ class PointTool(QgsMapTool):
         poly_layers = QgsProject.instance().mapLayersByName(self.main.parcel)
         if len(poly_layers) == 0:
             QMessageBox.warning(None, self.tr("Area ratio"),
-                    self.tr(f"{self.main.parcel} layer not found"))
+                    self.tr("{} layer not found").format(self.main.parcel))
             return
         poly_layer = poly_layers[0]
         # remove | layer: 0 tag from the end TODO not always good!
@@ -218,7 +218,7 @@ class PointTool(QgsMapTool):
         else:
             # No poly found
             QMessageBox.warning(None, self.tr("Area ratio"),
-                    self.tr(f"Feature not found on layer {self.main.parcel} "))
+                    self.tr("Feature not found on layer {}").format(self.main.parcel))
             return
         # remove previous selection
         poly_layer.removeSelection()
@@ -232,7 +232,7 @@ class PointTool(QgsMapTool):
             layers = QgsProject.instance().mapLayersByName(name)
             if len(layers) == 0:
                 QMessageBox.warning(None, self.tr("Area ratio"),
-                        self.tr(f"{name} layer not found"))
+                        self.tr("{} layer not found").format(name))
                 continue
             layer = layers[0]
             # remove | layer: 0 tag from the end

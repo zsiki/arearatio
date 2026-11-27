@@ -98,4 +98,4 @@ class AreaRatioDialog(QtWidgets.QDialog, FORM_CLASS):
                     config.write(configfile)
             except:
                 QMessageBox.warning(None, self.tr("Area ratio"),
-                        self.tr("Permission denied: ".format(f)))
+                        self.tr("Permission denied: ").format(f))
